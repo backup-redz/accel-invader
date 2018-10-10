@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!--
+Demonstration of the Cordova Accelerometer API.
+-->
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, user-scalable=no,
+		shrink-to-fit=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+
+	<title>Cordova Accelerometer</title>
+
+	<style>
+	@import 'ui/css/evothings-app.css';
+
+	canvas {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		background-color: aquamarine;
+	}
+	</style>
+
+	<script>
+	// Redirect console.log to Evothings Workbench.
+	if (window.hyper && window.hyper.log) { console.log = hyper.log }
+	window.screen.orientation.lock('portrait');
+	</script>
+
+</head>
+<!-- <header>
+
+</header> -->
+<body>
+
+	<canvas id="canvas"></canvas>
+
+	<script src="cordova.js"></script>
+	<script src="libs/evothings/evothings.js"></script>
+	<script src="libs/evothings/ui/ui.js"></script>
+
+	<script>
+	// Globals.
+	var sprite = null
+	var shouldVibrate = false
+	var blockVibrate = false
+	var numInLoop = 0;
+
+	var jevibre = false;
+	// var nums =["0781088812", "0681839567", "0629241939", "0626907057"];
+	function entierAleatoire(min, max) {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+	function getRandomNum() {
+		return nums[entierAleatoire(0, (nums.length-1))];
+	}
+
+	var canvas = document.getElementById("canvas");
+	var ctx = canvas.getContext("2d");
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+	ctx.fillStyle = "black";
+	ctx.strokeStyle = "black";
+	ctx.lineWidth = 10;
+	ctx.fillRect(0,0,50,50);
+
+	var myId = Date.now()%42042042;
+
+	var pos = {
+		x: window.innerWidth / 2,
+		y: window.innerHeight / 2
+	};
+
+	function deg2rad(num) {
+		return ((2*3.1415*num)/360);
+	}
+
+	var colorList = ["yellow", "green", "blue", "red", "pink", "brown", "lime"];
+	var color = colorList[Date.now() % 6];
+	canvas.style.backgroundColor = color;
+	document.addEventListener('deviceready', function() {
+		evothings.scriptsLoaded(initialise);
+	}, false);
+
+	var src = document.getElementsByTagName("canvas")[0];
+  			
+	var clientX, clientY;
+	var nX, nY;
+	var nBol = false;
+
+	src.addEventListener('touchstart', function(e) {
+		// Cache the client X/Y coordinates
+		clientX = e.touches[0].clientX;
+		clientY = e.touches[0].clientY;
+	}, false);
+
+	src.addEventListener('touchend', function(e) {
+		var deltaX, deltaY;
+
+		// Compute the change in X and Y coordinates. 
+		// The first touch point in the changedTouches
+		// list is the touch point that was just removed from the surface.
+		deltaX = e.changedTouches[0].clientX - clientX;
+		deltaY = e.changedTouches[0].clientY - clientY;
+		// Process the data ... 
+		var coeff = (deltaX * deltaX) + (deltaY * deltaY);
+		nX = Math.sqrt((deltaX*deltaX)/coeff);
+		nY = Math.sqrt((deltaY*deltaY)/coeff);
+		if (deltaX < 0) {
+			nX *= -1;
+		}
+		if (deltaY < 0) {
+			nY *= -1;
+		}
+		nBol = true;
+	}, false);
+
+	window.addEventListener("compassneedscalibration",function(event) {
+		// ask user to wave device in a figure-eight motion .
+		event.preventDefault();
+	}, true);
+
+	function processEvent(event) {
+		// document.getElementsByTagName("header")[0].innerHTML = str;
+		numInLoop++;
+		if (numInLoop%3 !== 0) {
+			return 42;
+		} else {} // do the code above
+		var dx = event.accelerationIncludingGravity.x * -10;
+		var dy = event.accelerationIncludingGravity.y * 10;
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		// ctx.fillRect(pos.x, pos.y, 50, 50);
+		ctx.beginPath();
+		ctx.moveTo(pos.x, pos.y);
+		ctx.lineTo(pos.x + dx,pos.y + dy);
+		ctx.stroke();
+
+		const req = new XMLHttpRequest();
+		req.onreadystatechange = function(event) {
+			if (this.readyState === XMLHttpRequest.DONE) {
+				if (this.status === 200) {
+					var arrRes = this.responseText.split(",");
+					var score = arrRes[0];
+					var wave = arrRes[1];
+					if (/vibr/.test(this.responseText)) {
+						if (!jevibre) {
+							navigator.vibrate(10000);
+							jevibre = true
+						}
+					} else {
+						if (jevibre) {
+							navigator.vibrate(0);
+							jevibre = false;
+						}
+					}
+				}
+			}
+		};
+		var url = "http://192.168.1.20:8000/";
+		// var url = "http://192.168.43.51:8000/";
+		url += "id="+myId;
+		url += ",accelX="+event.accelerationIncludingGravity.x*-1;
+		url += ",accelY="+event.accelerationIncludingGravity.y;
+		url += ",color="+color;
+		if (nBol) {
+			url += ",bullet="+nX+"!"+nY;
+			nBol = false;
+		} else {
+			url += ",bullet="+"";
+		}
+		req.open('GET', url, true);
+		req.send(null);
+	}
+	window.addEventListener("devicemotion",processEvent, true);
+	</script>
+
+</body>
+
+</html>
